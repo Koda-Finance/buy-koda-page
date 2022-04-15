@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import Web3 from "web3";
 import routerAbi from "../abis/routerAbi.json";
 import { AbiItem } from "web3-utils";
 import { Contract } from "web3-eth-contract";
 import {
   WEB3_BSC_LINK,
-  KODA_TO_BUSD_ROUTE,
+  WBNB_TO_KODA_ROUTE,
   SUMMITSWAP_ROUTER_ADDRESS,
   PANCAKE_SWAP_ROUTER_V2_ADDRESS,
 } from "../constants";
@@ -13,34 +13,8 @@ import {
 const KodaPrice = () => {
   const [pricePancakeswap, setPricePancakeswap] = useState(0);
   const [priceSummitswap, setPriceSummitswap] = useState(0);
-
+  const [bnbAmount, setBnbAmount] = useState("");
   const web3 = new Web3(WEB3_BSC_LINK);
-
-  useEffect(() => {
-    async function init() {
-      const kodaPrice = await getAmountsOut(
-        routerContract,
-        KODA_TO_BUSD_ROUTE,
-        1
-      );
-      setPricePancakeswap(kodaPrice);
-    }
-    init();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    async function init() {
-      const kodaPrice = await getAmountsOut(
-        routerContract2,
-        KODA_TO_BUSD_ROUTE,
-        1
-      );
-      setPriceSummitswap(kodaPrice);
-    }
-    init();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const routerContract = new web3.eth.Contract(
     routerAbi as AbiItem[],
@@ -65,18 +39,50 @@ const KodaPrice = () => {
         .then((o: string) => {
           return o[o.length - 1];
         });
-      const amountsOutInEther = web3.utils.fromWei(amountsOutInWei, "ether");
-      return Number(Number(amountsOutInEther).toFixed(10));
+      const amountsOutInGwei = web3.utils.fromWei(amountsOutInWei, "gwei");
+      return Number(Number(amountsOutInGwei).toFixed(4));
     } catch (err) {
       console.log(err);
       return 0;
     }
   }
 
+
+  const onChangeHandler = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setBnbAmount(e.target.value);
+  };
+
+  const onSubmitHandler = async () => {
+      const kodaPancakePrice = await getAmountsOut(
+      routerContract,
+      WBNB_TO_KODA_ROUTE,
+      Number(bnbAmount)
+    );
+
+    const kodaSummitPrice = await getAmountsOut(
+      routerContract2,
+      WBNB_TO_KODA_ROUTE,
+      Number(bnbAmount)
+    );
+
+    setPricePancakeswap(kodaPancakePrice);
+    setPriceSummitswap(kodaSummitPrice);
+  };
+
   return (
     <div>
-      Cheapest Koda Price is:
-      {pricePancakeswap < priceSummitswap ? pricePancakeswap : priceSummitswap}
+      <label>
+        Enter BnB:
+        <input value={bnbAmount} type="number" onChange={onChangeHandler} />
+      </label>
+      <button onClick={onSubmitHandler}>Enter</button>
+      <div>
+      <br/>
+        Koda:
+        {pricePancakeswap < priceSummitswap
+          ? pricePancakeswap
+          : priceSummitswap}
+      </div>
     </div>
   );
 };
